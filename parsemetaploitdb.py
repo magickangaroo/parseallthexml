@@ -1,10 +1,11 @@
 import psycopg2
 import sys
-
+pw=""
+user=""
 
 def connecttodb():
     try:
-        con = psycopg2.connect(database='msf3', user='adam', password='Cadcow0slo')
+        con = psycopg2.connect(database='msf3', user=user, password=pw)
         cur = con.cursor()
         return cur
 
