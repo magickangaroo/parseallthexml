@@ -67,38 +67,90 @@ if __name__ == "__main__":
 
 
     print "Report Below :"
+    results = []
     target = ""
     currentsuites = []
-    print "\nBad Suites"
+
     for i in badsuiteslist:
         targetnow = i[0]
 
         #print currentsuites
         if targetnow !=  target:
             printthis = "host %s (TCP/%s)" % (targetnow.split(':')[0], targetnow.split(':')[1])
-            print "\nNew Target %s" % printthis
+            #print "\nNew Target %s" % printthis
+            issues = { 'suites': currentsuites }
+            results.append([target, issues])
+
             target = targetnow
             currentsuites = []
 
         if i[1] not in currentsuites:
-            print i[1]
+            #print i[1]
             currentsuites.append(i[1])
 
 
 
-    print "\nLow Bits"
     target = ""
     currentsuites = []
+    #for result in results:
+    #    print result
+
+
+    btargets = 0
+    ltargets = 0
+    for i in badsuiteslist:
+        targetnow = i[0]
+        if targetnow !=  target:
+            btargets += 1
+            printthis = "host %s (TCP/%s)" % (targetnow.split(':')[0], targetnow.split(':')[1])
+            print "\nThe identified resource %s was found to support the following cipher-suites with known security issues"\
+                  % printthis
+            issues = { 'badsuite': currentsuites }
+
+
+            try:
+                index = results.index(target)
+                print index
+            except ValueError:
+                results.append([target, issues])
+
+            target = targetnow
+            currentsuites = []
+        if i[1] not in currentsuites:
+            print "cipher-suite : %s" % (i[1])
+            currentsuites.append(i[1])
+
+
     for i in lowbitslist:
         targetnow = i[0]
         if targetnow !=  target:
+            ltargets += 1
             printthis = "host %s (TCP/%s)" % (targetnow.split(':')[0], targetnow.split(':')[1])
-            print "\nNew Target %s" % printthis
+            print "\nThe identified resource %s was found to support the following cipher-suites with low bits " \
+                  "(under 128 bit effective)" % printthis
+
+            issues = { 'lowbit': currentsuites }
+
+            #find if target in current list
+
+            try:
+                index = results.index(target)
+                print index
+            except ValueError:
+                results.append([target, issues])
+
             target = targetnow
             currentsuites = []
         if i[2] not in currentsuites:
-            print "11Bits %s Suite %s" % (i[1], i[2])
+            print "Suite %s supports %s bits" % (i[2], i[1])
             currentsuites.append(i[2])
         #print "Bits %s Suite %s" % (i[1], i[2])
 
+    print "number of bad suites %s \n number of low bits %s" % (str(btargets), str(ltargets))
+
+'''
+    for result in results:
+        print result
+
     #beastlist = []
+'''
