@@ -1,94 +1,57 @@
 __author__ = 'adz'
-
-
-'''first attempt at a results object / class'''
-
-
+import sqlite3
+import uuid
+import math
 
 class Results:
-    def __init__(self, target, port, **kwargs):
+    def __init__(self, target, port, protocol, logging, **kwargs):
         self.target = target
+        self.protocol = protocol
         self.port = port
-
-
-
-class SslyzeResults(Results):
-
-    def printlines(self, version, issue, cipher, keysize):
-        return "[%s] issue found : %s with cipher %s of keylength %s" % (version, issue, cipher, keysize)
-
-    def printfindings(self):
-
-        print "=================REPORT BELOW===============" \
-              "\n[i] Data for host : %s : %s" % (self.target, self.port)
-
-        print "[h] HeartBleed found : %s " % self.heartbleed
-        if self.additionalcertinfo:
-            print "[A] Aditional cert information"
-            if self.addressvalue:
-                print "[A] %s" % self.addressvalue
-            if self.certlistentry:
-                print "[A] DNScertName %s" % self.certlistentry
-            if self.expiry:
-                print "[A] Expiry date %s" % self.expiry
-
-        print "[i] SSL v2 Findings below"
-        for finding in self.sslv2findings:
-            print self.printlines('SSLv2', finding['issue'], finding['cipher'], finding['keysize'])
-        print "[i] SSL v3 Findings below"
-        for finding in self.sslv3findings:
-            print self.printlines('SSLv3', finding['issue'], finding['cipher'], finding['keysize'])
-        print "[i] TLS v1.0 Findings below"
-        for finding in self.tls1findings:
-            print self.printlines('TLS1.0', finding['issue'], finding['cipher'], finding['keysize'])
-        print "[i] TLS v1.1 Findings below"
-        for finding in self.tls1_1findings:
-            print self.printlines('TLS1.1', finding['issue'], finding['cipher'], finding['keysize'])
-        print "[i] TLS v1.2 Findings below"
-        for finding in self.tls1_2findings:
-            print self.printlines('TLS1.2', finding['issue'], finding['cipher'], finding['keysize'])
-
-    def addsslv3result(self, issue, cipher, keysize):
-        finding = {'issue': issue, 'cipher': cipher, 'keysize': keysize}
-        self.sslv3findings.append(finding)
-
-    def addsslv2result(self, issue, cipher, keysize):
-        finding = {'issue': issue, 'cipher': cipher, 'keysize': keysize}
-        self.sslv2findings.append(finding)
-
-    def addtls1result(self, issue, cipher, keysize):
-        finding = {'issue': issue, 'cipher': cipher, 'keysize': keysize}
-        self.tls1findings.append(finding)
-
-    def addtls1_1result(self, issue, cipher, keysize):
-        finding = {'issue': issue, 'cipher': cipher, 'keysize': keysize}
-        self.tls1_1findings.append(finding)
-
-    def addtls1_2result(self, issue, cipher, keysize):
-        finding = {'issue': issue, 'cipher': cipher, 'keysize': keysize}
-        self.tls1_2findings.append(finding)
-
-    def __init__(self, target, port, heartbleed, **kwargs):
-        self.sslv2findings = []
-        self.sslv3findings = []
-        self.tls1findings = []
-        self.tls1_1findings = []
-        self.tls1_2findings = []
-        self.results = []
-        self.target = target
-        self.port = port
-        self.heartbleed = heartbleed
-
+        self.findingfound = False
+        self.logging = logging
         for key, value in kwargs.iteritems():
-            if key == "addressvalue":
-                self.addressvalue = value
-                self.additionalcertinfo=True
-            if key == "certlistentry":
-                self.certlistentry = value
-                self.additionalcertinfo=True
-            if key == "expires":
-                self.expiry = value
-                self.additionalcertinfo=True
+            if key == "gluedb":
+                self.gluedb = value
+
+
+    def createdbobject(self):
+        self.conn = sqlite3.connect(self.gluedb)
+        self.c = self.conn.cursor()
+
+    def commitdb(self):
+        self.conn.commit()
+        self.conn.close()
+
+    def insertfinding(self, findingtitle, findingguid):
+
+        if self.findingfound:
+            #only want to do this if theres a finding right?
+            self.subjectguid = uuid.uuid4()
+            self.logging.info("[I] Inserting New - %s (%s/%s)" % (self.target, self.protocol, self.port))
+            querysubject = "insert into Subjects('SubjectGuid', 'Name') values ('%s','%s (TCP/%s)')" % \
+                               (self.subjectguid, self.target, self.port)
+
+            query = "insert into Findings('FindingGuid','WriteUpGuid','Title','Subject','DefaultSeverityId','SeverityId'," \
+                        "'Tester','Status','ReportNotes','InternalNotes','QaNotes','QaFlag')"
+            #is this a single finding or part of a list?
+
+            if len(self.findingtextlist) == 0:
+                #not part of a list
+
+                query += ' values ("%s","%s","%s","%s", "NULL","4","%s","1", "%s","","","0")' % \
+                        (uuid.uuid4(), findingguid, findingtitle, self.subjectguid, self.tester,
+                         self.findingtext)
+
+
+            elif len(self.findingtextlist) != 0:
+                # part of a list, we may now have multiple finding texts to merge
+
+                query += ' values ("%s","%s","%s","%s", "NULL","4","%s","1", "%s","","","0")' % \
+                        (uuid.uuid4(), findingguid, findingtitle, self.subjectguid, self.tester,
+                         '\n'.join(self.findingtextlist))
+            self.c.execute(querysubject)
+            self.c.execute(query)
 
 
 
